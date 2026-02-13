@@ -1,0 +1,24 @@
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from .serializers import JobSerializer
+from .permissions import IsRecruiter
+from rest_framework.decorators import api_view, permission_classes
+from .models import Job
+
+class CreateJobView(APIView):
+    permission_classes = [IsAuthenticated, IsRecruiter]
+
+    def post(self, request):
+        serializer = JobSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(created_by=request.user)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_jobs(request):
+    jobs = Job.objects.all()
+    serializer = JobSerializer(jobs, many=True)
+    return Response(serializer.data)
