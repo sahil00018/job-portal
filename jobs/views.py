@@ -12,6 +12,9 @@ class CreateJobView(APIView):
     permission_classes = [IsAuthenticated, IsRecruiter]
 
     def post(self, request):
+        if request.user.role != 'recruiter':
+         return Response({"error": "Only recruiters can create jobs"}, status=403)
+
         serializer = JobSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(created_by=request.user)
@@ -28,6 +31,14 @@ class ApplyJobView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, job_id):
+
+        # 🔴 ADD THIS BLOCK
+        if request.user.role != 'candidate':
+            return Response(
+                {"error": "Only candidates can apply"},
+                status=403
+            )
+
         job = Job.objects.get(id=job_id)
 
         if Application.objects.filter(job=job, applicant=request.user).exists():
@@ -35,3 +46,4 @@ class ApplyJobView(APIView):
 
         Application.objects.create(job=job, applicant=request.user)
         return Response({"message": "Application submitted successfully"}, status=201)
+
