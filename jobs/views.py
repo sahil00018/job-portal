@@ -7,6 +7,7 @@ from .permissions import IsRecruiter
 from rest_framework.decorators import api_view, permission_classes
 from .models import Job
 from .models import Application
+from django.db.models import Q
 
 class CreateJobView(APIView):
     permission_classes = [IsAuthenticated, IsRecruiter]
@@ -22,11 +23,25 @@ class CreateJobView(APIView):
         return Response(serializer.errors, status=400)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+
 def list_jobs(request):
+
     jobs = Job.objects.all()
+
+    # Title filter
+    title = request.query_params.get('title')
+    if title:
+        jobs = jobs.filter(title__icontains=title.strip())
+
+    # Company filter
+    company = request.query_params.get('company')
+    if company:
+        jobs = jobs.filter(company_name__icontains=company.strip())
+
     serializer = JobSerializer(jobs, many=True)
     return Response(serializer.data)
 
+    
 class ApplyJobView(APIView):
     permission_classes = [IsAuthenticated]
 
