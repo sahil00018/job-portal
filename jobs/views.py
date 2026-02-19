@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -47,18 +48,33 @@ class ApplyJobView(APIView):
 
     def post(self, request, job_id):
 
-        # 🔴 ADD THIS BLOCK
-        if request.user.role != 'candidate':
+        # ✅ Check role
+        if request.user.role.lower() != 'candidate':
             return Response(
                 {"error": "Only candidates can apply"},
                 status=403
             )
 
-        job = Job.objects.get(id=job_id)
+        # ✅ Safe job fetching (prevents crash)
+        job = get_object_or_404(Job, id=job_id)
 
-        if Application.objects.filter(job=job, applicant=request.user).exists():
-            return Response({"message": "You already applied"}, status=400)
+        # ✅ Duplicate check
+        if Application.objects.filter(
+            job=job,
+            applicant=request.user
+        ).exists():
+            return Response(
+                {"message": "You already applied"},
+                status=400
+            )
 
-        Application.objects.create(job=job, applicant=request.user)
-        return Response({"message": "Application submitted successfully"}, status=201)
+        # ✅ Create application
+        Application.objects.create(
+            job=job,
+            applicant=request.user
+        )
 
+        return Response(
+            {"message": "Application submitted successfully"},
+            status=201
+        )
