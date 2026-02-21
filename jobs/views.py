@@ -48,33 +48,52 @@ class ApplyJobView(APIView):
 
     def post(self, request, job_id):
 
-        # ✅ Check role
-        if request.user.role.lower() != 'candidate':
-            return Response(
-                {"error": "Only candidates can apply"},
-                status=403
-            )
+        if request.user.role.lower() != "candidate":
+            return Response({"error": "Only candidates can apply"}, status=403)
 
-        # ✅ Safe job fetching (prevents crash)
-        job = get_object_or_404(Job, id=job_id)
+        try:
+            job = Job.objects.get(id=job_id)
+        except Job.DoesNotExist:
+            return Response({"error": "Job not found"}, status=404)
 
-        # ✅ Duplicate check
-        if Application.objects.filter(
-            job=job,
-            applicant=request.user
-        ).exists():
-            return Response(
-                {"message": "You already applied"},
-                status=400
-            )
+        # ✅ Fix here
+        if Application.objects.filter(job=job, applicant=request.user).exists():
+            return Response({"message": "You already applied"}, status=400)
 
-        # ✅ Create application
         Application.objects.create(
             job=job,
             applicant=request.user
         )
 
-        return Response(
-            {"message": "Application submitted successfully"},
-            status=201
-        )
+        return Response({"message": "Applied successfully"}, status=201)
+
+
+class RecruiterApplicationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        # Allow only recruiter
+        if request.user.role.lower() != "recruiter":
+            return Response(
+                {"error": "Only recruiters can view applications"},
+                status=403
+            )
+
+        # Get jobs created by this recruiter
+        jobs = Job.objects.filter(created_by=request.user)
+
+
+        # Get applications for those jobs
+        applications = Application.objects.filter(job__in=jobs)
+
+        data = []
+
+        for app in applications:
+            data.append({
+                "job_title": app.job.title,
+                "candidate": app.applicant.username,
+                "applied_at": app.applied_at
+            })
+
+        return Response(data)
