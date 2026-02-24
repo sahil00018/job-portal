@@ -21,9 +21,22 @@ class Application(models.Model):
     applicant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     applied_at = models.DateTimeField(auto_now_add=True)
 
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('SHORTLISTED', 'Shortlisted'),
+        ('REJECTED', 'Rejected'),
+    ]
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='PENDING'
+    )
+
     class Meta:
         unique_together = ('job', 'applicant')
 
     def __str__(self):
         return f"{self.applicant} applied to {self.job.title}"
+
 

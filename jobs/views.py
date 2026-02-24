@@ -97,3 +97,40 @@ class RecruiterApplicationsView(APIView):
             })
 
         return Response(data)
+    
+class UpdateApplicationStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, application_id):
+
+        # Only recruiter allowed
+        if request.user.role.lower() != "recruiter":
+            return Response(
+                {"error": "Only recruiters can update status"},
+                status=403
+            )
+
+        application = get_object_or_404(Application, id=application_id)
+
+        # Ensure recruiter owns the job
+        if application.job.created_by != request.user:
+            return Response(
+                {"error": "You can update only your job applications"},
+                status=403
+            )
+
+        new_status = request.data.get("status")
+
+        if new_status not in ["PENDING", "SHORTLISTED", "REJECTED"]:
+            return Response(
+                {"error": "Invalid status"},
+                status=400
+            )
+
+        application.status = new_status
+        application.save()
+
+        return Response(
+            {"message": "Status updated successfully"},
+            status=200
+        )
