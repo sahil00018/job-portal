@@ -134,3 +134,28 @@ class UpdateApplicationStatusView(APIView):
             {"message": "Status updated successfully"},
             status=200
         )
+class CandidateApplicationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        # Only candidate allowed
+        if request.user.role.lower() != "candidate":
+            return Response(
+                {"error": "Only candidates can view their applications"},
+                status=403
+            )
+
+        applications = Application.objects.filter(applicant=request.user)
+
+        data = []
+
+        for app in applications:
+            data.append({
+                "job_title": app.job.title,
+                "company": app.job.company_name,
+                "status": app.status,
+                "applied_at": app.applied_at
+            })
+
+        return Response(data)

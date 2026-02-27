@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ApplyJobView, CreateJobView, RecruiterApplicationsView, UpdateApplicationStatusView,list_jobs # make sure this matches your view name
+from .views import ApplyJobView, CandidateApplicationsView, CreateJobView, RecruiterApplicationsView, UpdateApplicationStatusView,list_jobs # make sure this matches your view name
 
 urlpatterns = [
     path('create/', CreateJobView.as_view(), name='create_job'),
@@ -9,5 +9,8 @@ urlpatterns = [
     path('applications/<int:application_id>/update-status/',
      UpdateApplicationStatusView.as_view(),
      name='update-application-status'),
+    path('my-applications/',
+     CandidateApplicationsView.as_view(),
+     name='candidate-applications'),
 
 ]
