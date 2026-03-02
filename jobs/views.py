@@ -12,7 +12,7 @@ from .models import Job
 from .models import Application
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
-
+from rest_framework.generics import ListAPIView
 
 class CreateJobView(APIView):
     permission_classes = [IsAuthenticated, IsRecruiter]
@@ -72,30 +72,29 @@ class ApplyJobView(APIView):
         return Response({"message": "Applied successfully"}, status=201)
 
 
-class RecruiterApplicationsView(APIView):
+class RecruiterApplicationsView(ListAPIView):
+    serializer_class = ApplicationSerializer
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get_queryset(self):
 
-        if request.user.role.lower() != "recruiter":
-            return Response({"error": "Only recruiters allowed"}, status=403)
+        # Only recruiter allowed
+        if self.request.user.role.lower() != "recruiter":
+            return Application.objects.none()
 
-        applications = Application.objects.filter(
-            job__created_by=request.user
+        queryset = Application.objects.filter(
+            job__created_by=self.request.user
         )
 
-        # Filter by status
-        status_filter = request.query_params.get("status")
+        # Filtering by status
+        status_filter = self.request.query_params.get("status")
+
         if status_filter:
-            applications = applications.filter(status=status_filter.upper())
+            queryset = queryset.filter(
+                status=status_filter.upper()
+            )
 
-        paginator = PageNumberPagination()
-        paginator.page_size = 5
-
-        result_page = paginator.paginate_queryset(applications, request)
-        serializer = ApplicationSerializer(result_page, many=True)
-
-        return paginator.get_paginated_response(serializer.data)
+        return queryset
 
 class UpdateApplicationStatusView(APIView):
     permission_classes = [IsAuthenticated]
@@ -136,25 +135,26 @@ class UpdateApplicationStatusView(APIView):
 from .serializers import ApplicationSerializer
 from rest_framework.pagination import PageNumberPagination
 
-class CandidateApplicationsView(APIView):
+
+from rest_framework.permissions import IsAuthenticated
+
+class CandidateApplicationsView(ListAPIView):
+    serializer_class = ApplicationSerializer
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get_queryset(self):
+        if self.request.user.role.lower() != "candidate":
+            return Application.objects.none()
 
-        if request.user.role.lower() != "candidate":
-            return Response({"error": "Only candidates allowed"}, status=403)
+        queryset = Application.objects.filter(
+            applicant=self.request.user
+        )
 
-        applications = Application.objects.filter(applicant=request.user)
+        status_filter = self.request.query_params.get("status")
 
-        # Filter by status
-        status_filter = request.query_params.get("status")
         if status_filter:
-            applications = applications.filter(status=status_filter.upper())
+            queryset = queryset.filter(
+                status=status_filter.upper()
+            )
 
-        paginator = PageNumberPagination()
-        paginator.page_size = 5
-
-        result_page = paginator.paginate_queryset(applications, request)
-        serializer = ApplicationSerializer(result_page, many=True)
-
-        return paginator.get_paginated_response(serializer.data)
+        return queryset
