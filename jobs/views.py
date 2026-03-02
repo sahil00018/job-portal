@@ -1,3 +1,5 @@
+from urllib import request
+
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -82,15 +84,19 @@ class RecruiterApplicationsView(APIView):
             job__created_by=request.user
         )
 
+        # Filter by status
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            applications = applications.filter(status=status_filter.upper())
+
         paginator = PageNumberPagination()
         paginator.page_size = 5
 
         result_page = paginator.paginate_queryset(applications, request)
         serializer = ApplicationSerializer(result_page, many=True)
+
         return paginator.get_paginated_response(serializer.data)
 
-
-    
 class UpdateApplicationStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -127,6 +133,9 @@ class UpdateApplicationStatusView(APIView):
             {"message": "Status updated successfully"},
             status=200
         )
+from .serializers import ApplicationSerializer
+from rest_framework.pagination import PageNumberPagination
+
 class CandidateApplicationsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -137,10 +146,15 @@ class CandidateApplicationsView(APIView):
 
         applications = Application.objects.filter(applicant=request.user)
 
+        # Filter by status
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            applications = applications.filter(status=status_filter.upper())
+
         paginator = PageNumberPagination()
         paginator.page_size = 5
 
         result_page = paginator.paginate_queryset(applications, request)
         serializer = ApplicationSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
 
+        return paginator.get_paginated_response(serializer.data)
