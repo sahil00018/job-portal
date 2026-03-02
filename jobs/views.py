@@ -3,12 +3,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import JobSerializer
+from .serializers import ApplicationSerializer, JobSerializer
 from .permissions import IsRecruiter
 from rest_framework.decorators import api_view, permission_classes
 from .models import Job
 from .models import Application
 from django.db.models import Q
+from rest_framework.pagination import PageNumberPagination
+
 
 class CreateJobView(APIView):
     permission_classes = [IsAuthenticated, IsRecruiter]
@@ -73,30 +75,21 @@ class RecruiterApplicationsView(APIView):
 
     def get(self, request):
 
-        # Allow only recruiter
         if request.user.role.lower() != "recruiter":
-            return Response(
-                {"error": "Only recruiters can view applications"},
-                status=403
-            )
+            return Response({"error": "Only recruiters allowed"}, status=403)
 
-        # Get jobs created by this recruiter
-        jobs = Job.objects.filter(created_by=request.user)
+        applications = Application.objects.filter(
+            job__created_by=request.user
+        )
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 5
+
+        result_page = paginator.paginate_queryset(applications, request)
+        serializer = ApplicationSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
-        # Get applications for those jobs
-        applications = Application.objects.filter(job__in=jobs)
-
-        data = []
-
-        for app in applications:
-            data.append({
-                "job_title": app.job.title,
-                "candidate": app.applicant.username,
-                "applied_at": app.applied_at
-            })
-
-        return Response(data)
     
 class UpdateApplicationStatusView(APIView):
     permission_classes = [IsAuthenticated]
@@ -139,23 +132,15 @@ class CandidateApplicationsView(APIView):
 
     def get(self, request):
 
-        # Only candidate allowed
         if request.user.role.lower() != "candidate":
-            return Response(
-                {"error": "Only candidates can view their applications"},
-                status=403
-            )
+            return Response({"error": "Only candidates allowed"}, status=403)
 
         applications = Application.objects.filter(applicant=request.user)
 
-        data = []
+        paginator = PageNumberPagination()
+        paginator.page_size = 5
 
-        for app in applications:
-            data.append({
-                "job_title": app.job.title,
-                "company": app.job.company_name,
-                "status": app.status,
-                "applied_at": app.applied_at
-            })
+        result_page = paginator.paginate_queryset(applications, request)
+        serializer = ApplicationSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
-        return Response(data)
